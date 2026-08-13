@@ -11,6 +11,19 @@ services:
       AWS_REGION: ${AWS_REGION:-ap-south-1}
       DYNAMODB_ENDPOINT_URL: http://dynamodb-local:8000
       TERRAFORM_MODULES_PATH: /terraform-modules
+      # Demo mode enabled by default - set to false when Azure DevOps is configured
+      DEMO_MODE: ${DEMO_MODE:-true}
+      # Azure DevOps Configuration (optional - only needed when DEMO_MODE=false)
+      AZDO_ORGANIZATION: ${AZDO_ORGANIZATION:-}
+      AZDO_PROJECT: ${AZDO_PROJECT:-}
+      AZDO_REPOSITORY_ID: ${AZDO_REPOSITORY_ID:-}
+      AZDO_PIPELINE_ID: ${AZDO_PIPELINE_ID:-}
+      AZDO_PAT: ${AZDO_PAT:-}
+      GIT_REPOSITORY: ${GIT_REPOSITORY:-}
+      GIT_BRANCH: ${GIT_BRANCH:-main}
+      BACKEND_API_URL: ${BACKEND_API_URL:-http://localhost:8100}
+      # Bedrock Configuration
+      BEDROCK_MODEL_ID: ${BEDROCK_MODEL_ID:-anthropic.claude-sonnet-4-20250514}
     volumes:
       - ./backend/app:/app/app
       - ./terraform/modules:/terraform-modules:ro

@@ -54,6 +54,9 @@ class AzureDevOpsClient:
         """Get Azure DevOps organization from config."""
         org = getattr(settings, "azdo_organization", None)
         if not org:
+            if settings.demo_mode:
+                logger.info("Running in demo mode - Azure DevOps organization not required")
+                return "demo-org"
             raise ValueError("Azure DevOps organization not configured")
         return org
     
@@ -61,6 +64,9 @@ class AzureDevOpsClient:
         """Get Azure DevOps project from config."""
         project = getattr(settings, "azdo_project", None)
         if not project:
+            if settings.demo_mode:
+                logger.info("Running in demo mode - Azure DevOps project not required")
+                return "demo-project"
             raise ValueError("Azure DevOps project not configured")
         return project
     
