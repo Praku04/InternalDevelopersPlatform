@@ -62,6 +62,25 @@ class DeploymentSpecification(BaseModel):
         return v.lower()
 
 
+# Alias for backward compatibility
+DeploymentRequest = DeploymentSpecification
+
+
+class DeploymentStatus(str, Enum):
+    """Deployment status enumeration."""
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class DeploymentSource(str, Enum):
+    """Deployment source enumeration."""
+    SELF_SERVICE = "self_service"
+    AI_ASSISTANT = "ai_assistant"
+
+
 class AIDeploymentRecommendation(BaseModel):
     """
     The schema-validated shape an AI (Bedrock) response must conform to

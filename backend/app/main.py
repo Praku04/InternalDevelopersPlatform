@@ -29,20 +29,20 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*"],  # Allow all origins for now
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(health.router)
-app.include_router(modules.router)
-app.include_router(requests.router)
-app.include_router(terraform.router)
-app.include_router(deployments.router)
-app.include_router(approvals.router)
-app.include_router(ai.router)
-app.include_router(inventory.router)
+app.include_router(health.router, tags=["health"])
+app.include_router(modules.router, prefix="/api/v1/modules", tags=["modules"])
+app.include_router(requests.router, prefix="/api/v1/requests", tags=["requests"])
+app.include_router(terraform.router, prefix="/api/v1/terraform", tags=["terraform"])
+app.include_router(deployments.router, prefix="/api/v1/deployments", tags=["deployments"])
+app.include_router(approvals.router, prefix="/api/v1/approvals", tags=["approvals"])
+app.include_router(ai.router, prefix="/api/v1/ai", tags=["ai"])
+app.include_router(inventory.router, prefix="/api/v1/inventory", tags=["inventory"])
 
 
 @app.get("/")
