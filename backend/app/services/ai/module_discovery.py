@@ -28,8 +28,13 @@ class ModuleDiscoveryService:
     
     def __init__(self):
         """Initialize module discovery service."""
+        from app.config import get_settings
+        settings = get_settings()
+        
         self.bedrock = BedrockClient()
-        self.module_registry = ModuleRegistryRepository()
+        # Initialize module registry with modules path from settings
+        modules_root = settings.terraform_modules_path
+        self.module_registry = ModuleRegistryRepository(modules_root)
     
     def analyze_request(
         self,

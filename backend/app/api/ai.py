@@ -271,8 +271,11 @@ def ai_health() -> dict[str, Any]:
     
     # Check module registry
     try:
+        from app.config import get_settings
         from app.repositories.module_registry import ModuleRegistryRepository
-        registry = ModuleRegistryRepository()
+        
+        settings = get_settings()
+        registry = ModuleRegistryRepository(settings.terraform_modules_path)
         modules = registry.list_modules()
         health["modules_available"] = len(modules)
         health["module_registry"] = "healthy"
