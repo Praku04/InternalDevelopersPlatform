@@ -1,0 +1,117 @@
+═══════════════════════════════════════════════════════════════
+   BACKEND IMPORT ERROR FIXED - RUN THESE COMMANDS NOW
+═══════════════════════════════════════════════════════════════
+
+I found and fixed the issue! The backend was trying to import 
+'DeploymentRequest' which doesn't exist. It should be 
+'DeploymentSpecification'.
+
+-------------------------------------------------------------------
+STEP 1: Pull Updated Code (if using Git)
+-------------------------------------------------------------------
+
+cd ~/InternalDevelopersPlatform
+git pull
+
+# Or if you uploaded files manually, make sure terraform_service.py 
+# is updated with the fix
+
+-------------------------------------------------------------------
+STEP 2: Rebuild and Restart Backend
+-------------------------------------------------------------------
+
+# Stop everything
+docker-compose down
+
+# Rebuild backend with the fix
+docker-compose build --no-cache backend
+
+# Start everything
+docker-compose up -d
+
+-------------------------------------------------------------------
+STEP 3: Wait and Check Status
+-------------------------------------------------------------------
+
+# Wait for services to start
+sleep 10
+
+# Check all containers are running
+docker-compose ps
+
+# You should now see:
+# ✅ internaldevelopersplatform-backend-1        Up
+# ✅ internaldevelopersplatform-frontend-1       Up
+# ✅ internaldevelopersplatform-dynamodb-local-1 Up
+
+-------------------------------------------------------------------
+STEP 4: Test Backend
+-------------------------------------------------------------------
+
+# Test health endpoint
+curl http://localhost:8100/api/v1/health
+
+# Should return: {"status":"healthy"}
+
+# Test modules endpoint
+curl http://localhost:8100/api/v1/modules
+
+# Should return: JSON array with 5 modules
+
+-------------------------------------------------------------------
+STEP 5: Check Logs (if still having issues)
+-------------------------------------------------------------------
+
+docker-compose logs backend --tail 50
+
+-------------------------------------------------------------------
+STEP 6: Access from Browser
+-------------------------------------------------------------------
+
+Open these URLs:
+
+Frontend (UI):
+http://YOUR_VPS_IP:3200
+
+Backend API Docs:
+http://YOUR_VPS_IP:8100/docs
+
+Health Check:
+http://YOUR_VPS_IP:8100/api/v1/health
+
+-------------------------------------------------------------------
+ONE-LINER TO FIX EVERYTHING
+-------------------------------------------------------------------
+
+cd ~/InternalDevelopersPlatform && \
+docker-compose down && \
+docker-compose build --no-cache backend && \
+docker-compose up -d && \
+sleep 10 && \
+echo "=== Container Status ===" && \
+docker-compose ps && \
+echo "" && \
+echo "=== Health Check ===" && \
+curl http://localhost:8100/api/v1/health
+
+-------------------------------------------------------------------
+SUCCESS CHECKLIST
+-------------------------------------------------------------------
+
+After running the commands, verify:
+
+✅ docker-compose ps shows backend with "Up" status
+✅ curl http://localhost:8100/api/v1/health returns {"status":"healthy"}
+✅ http://YOUR_VPS_IP:3200 loads the dashboard in browser
+✅ Dashboard shows "5" in Approved Modules card
+✅ Can click "Modules" and see 5 modules
+✅ Can click "New Request" and see the form
+
+═══════════════════════════════════════════════════════════════
+                    ISSUE FIXED! NOW DEPLOY
+═══════════════════════════════════════════════════════════════
+
+The fix is ready in your local files. 
+Push/upload to VPS and run the commands above.
+
+═══════════════════════════════════════════════════════════════

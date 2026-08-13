@@ -10,7 +10,7 @@ import shutil
 from pathlib import Path
 
 from app.config import get_settings
-from app.models.deployment import DeploymentRequest
+from app.models.deployment import DeploymentSpecification
 from app.terraform.generator import TerraformGenerator
 from app.terraform.engine import TerraformEngine
 
@@ -35,7 +35,7 @@ class TerraformService:
         self.base_workspace_path = Path("terraform/generated")
         self.base_workspace_path.mkdir(parents=True, exist_ok=True)
     
-    def prepare_workspace(self, request: DeploymentRequest) -> str:
+    def prepare_workspace(self, request: DeploymentSpecification) -> str:
         """
         Prepare Terraform workspace for deployment.
         
@@ -43,7 +43,7 @@ class TerraformService:
         ready for Azure DevOps pipeline to execute.
         
         Args:
-            request: Deployment request
+            request: Deployment specification
             
         Returns:
             Path to workspace directory
@@ -95,48 +95,39 @@ class TerraformService:
                 shutil.rmtree(workspace_path)
             raise
     
-    def _generate_tfvars(self, request: DeploymentRequest) -> str:
+    def _generate_tfvars(self, request: DeploymentSpecification) -> str:
         """
         Generate terraform.tfvars file.
         
         Args:
-            request: Deployment request
+            request: Deployment specification
             
         Returns:
             tfvars content
         """
         lines = [
             f"# Generated for request {request.request_id}",
-            f"# Application: {request.application_name}",
+            f"# Application: {request.application}",
             f"# Environment: {request.environment}",
             "",
-            f'application_name = "{request.application_name}"',
+            f'application_name = "{request.application}"',
             f'environment = "{request.environment}"',
-            f'aws_region = "{request.aws_region}"',
-            f'aws_account_id = "{request.aws_account_id}"',
+            f'aws_region = "{request.region}"',
             "",
         ]
         
         # Add resource-specific variables
         for resource in request.resources:
-            if resource.type == "ec2":
-                props = resource.properties
+            config = resource.configuration
+            if resource.type.value == "ec2":
                 lines.extend([
-                    f'instance_type = "{props.get("instance_type", "t3.micro")}"',
-                    f'instance_count = {props.get("instance_count", 1)}',
-                    f'ebs_encrypted = {str(props.get("ebs_encrypted", True)).lower()}',
-                    f'monitoring = {str(props.get("monitoring", False)).lower()}',
+                    f'instance_type = "{config.get("instance_type", "t3.micro")}"',
+                    f'instance_count = {config.get("instance_count", 1)}',
                 ])
-            elif resource.type == "s3":
-                props = resource.properties
+            elif resource.type.value == "s3":
                 lines.extend([
-                    f'bucket_encryption = {str(props.get("encryption", True)).lower()}',
-                    f'versioning = {str(props.get("versioning", False)).lower()}',
-                ])
-            elif resource.type == "alb":
-                props = resource.properties
-                lines.extend([
-                    f'enable_deletion_protection = {str(props.get("deletion_protection", False)).lower()}',
+                    f'bucket_encryption = {str(config.get("encryption_enabled", True)).lower()}',
+                    f'versioning = {str(config.get("versioning_enabled", False)).lower()}',
                 ])
         
         return "\n".join(lines)
