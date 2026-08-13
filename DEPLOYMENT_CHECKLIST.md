@@ -63,8 +63,9 @@ nano .env
 **For Demo/Testing:**
 ```bash
 DEMO_MODE=true
-BACKEND_API_URL=http://YOUR_VPS_IP:8000
-FRONTEND_URL=http://YOUR_VPS_IP:3000
+BACKEND_API_URL=http://YOUR_VPS_IP:8100
+FRONTEND_URL=http://YOUR_VPS_IP:3200
+NEXT_PUBLIC_API_BASE_URL=http://YOUR_VPS_IP:8100
 ```
 
 **For Production with AWS:**
@@ -74,8 +75,9 @@ AWS_REGION=ap-south-1
 AWS_ACCESS_KEY_ID=your_key
 AWS_SECRET_ACCESS_KEY=your_secret
 BEDROCK_MODEL_ID=anthropic.claude-sonnet-4-20250514
-BACKEND_API_URL=http://YOUR_VPS_IP:8000
-FRONTEND_URL=http://YOUR_VPS_IP:3000
+BACKEND_API_URL=http://YOUR_VPS_IP:8100
+FRONTEND_URL=http://YOUR_VPS_IP:3200
+NEXT_PUBLIC_API_BASE_URL=http://YOUR_VPS_IP:8100
 ```
 
 Save: `Ctrl+X`, `Y`, `Enter`
@@ -110,8 +112,8 @@ sudo apt install ufw -y
 sudo ufw allow 22/tcp    # SSH
 sudo ufw allow 80/tcp    # HTTP
 sudo ufw allow 443/tcp   # HTTPS
-sudo ufw allow 8000/tcp  # Backend
-sudo ufw allow 3000/tcp  # Frontend
+sudo ufw allow 8100/tcp  # Backend API
+sudo ufw allow 3200/tcp  # Frontend UI
 sudo ufw enable
 ```
 
@@ -119,17 +121,18 @@ sudo ufw enable
 
 ```bash
 # Test backend
-curl http://localhost:8000/api/v1/health
+curl http://localhost:8100/api/v1/health
 
 # Should return: {"status":"healthy"}
 
 # Test modules endpoint
-curl http://localhost:8000/api/v1/modules | head -20
+curl http://localhost:8100/api/v1/modules | head -20
 ```
 
 From your browser:
-- Backend API Docs: `http://YOUR_VPS_IP:8000/docs`
-- Frontend: `http://YOUR_VPS_IP:3000`
+- **Frontend (UI)**: `http://YOUR_VPS_IP:3200`
+- **Backend API Docs**: `http://YOUR_VPS_IP:8100/docs`
+- **Health Check**: `http://YOUR_VPS_IP:8100/api/v1/health`
 
 ### 7️⃣ Set Up Nginx (Optional - 5 minutes)
 
@@ -149,7 +152,7 @@ server {
 
     # Frontend
     location / {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://localhost:3200;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -159,14 +162,14 @@ server {
 
     # Backend API
     location /api {
-        proxy_pass http://localhost:8000;
+        proxy_pass http://localhost:8100;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
 
     # API Docs
     location /docs {
-        proxy_pass http://localhost:8000;
+        proxy_pass http://localhost:8100;
         proxy_set_header Host $host;
     }
 }
@@ -302,7 +305,7 @@ docker-compose up -d --build
 ### Issue: "Port already in use"
 ```bash
 # Find and kill process using port
-sudo lsof -i :8000
+sudo lsof -i :8100
 sudo kill -9 <PID>
 
 # Or change ports in docker-compose.yml
@@ -343,12 +346,12 @@ echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 sudo ufw status
 
 # Open port if needed
-sudo ufw allow 8000/tcp
-sudo ufw allow 3000/tcp
+sudo ufw allow 8100/tcp
+sudo ufw allow 3200/tcp
 
 # Check if services are running
 docker-compose ps
-curl http://localhost:8000/api/v1/health
+curl http://localhost:8100/api/v1/health
 ```
 
 ---
@@ -424,8 +427,8 @@ Use free services like:
 - **Pingdom** (pingdom.com)
 
 Monitor these URLs:
-- `http://YOUR_VPS_IP:8000/api/v1/health`
-- `http://YOUR_VPS_IP:3000`
+- `http://YOUR_VPS_IP:8100/api/v1/health`
+- `http://YOUR_VPS_IP:3200`
 
 ---
 

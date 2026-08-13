@@ -1,0 +1,260 @@
+═══════════════════════════════════════════════════════════════
+   EXACT COMMANDS TO RUN ON YOUR VPS (corridors)
+═══════════════════════════════════════════════════════════════
+
+Copy and paste these commands one by one into your VPS terminal.
+
+-------------------------------------------------------------------
+STEP 1: Navigate to Project Directory
+-------------------------------------------------------------------
+
+cd ~/InternalDevelopersPlatform
+
+-------------------------------------------------------------------
+STEP 2: Pull Latest Changes (if using Git)
+-------------------------------------------------------------------
+
+git pull
+
+# Or if you uploaded files manually, skip this step
+
+-------------------------------------------------------------------
+STEP 3: Create/Update .env File
+-------------------------------------------------------------------
+
+cp .env.example .env
+
+# The default .env works for demo mode, but if you want to customize:
+# nano .env
+# (Edit if needed, then Ctrl+X, Y, Enter to save)
+
+-------------------------------------------------------------------
+STEP 4: Stop Old Containers
+-------------------------------------------------------------------
+
+docker-compose down
+
+-------------------------------------------------------------------
+STEP 5: Remove Old Containers (Clean Start)
+-------------------------------------------------------------------
+
+docker rm -f internaldevelopersplatform-frontend-1 internaldevelopersplatform-backend-1 2>/dev/null || true
+
+-------------------------------------------------------------------
+STEP 6: Build New Images
+-------------------------------------------------------------------
+
+docker-compose build --no-cache
+
+# This will take 3-5 minutes. Wait for it to complete.
+
+-------------------------------------------------------------------
+STEP 7: Start All Services
+-------------------------------------------------------------------
+
+docker-compose up -d
+
+-------------------------------------------------------------------
+STEP 8: Wait for Services to Start
+-------------------------------------------------------------------
+
+sleep 10
+
+-------------------------------------------------------------------
+STEP 9: Check Container Status
+-------------------------------------------------------------------
+
+docker-compose ps
+
+# You should see:
+# - internaldevelopersplatform-backend-1     Up
+# - internaldevelopersplatform-frontend-1    Up
+# - internaldevelopersplatform-dynamodb-local-1    Up
+
+-------------------------------------------------------------------
+STEP 10: Test Backend Health
+-------------------------------------------------------------------
+
+curl http://localhost:8100/api/v1/health
+
+# Should return: {"status":"healthy"}
+
+-------------------------------------------------------------------
+STEP 11: Test Backend Modules Endpoint
+-------------------------------------------------------------------
+
+curl http://localhost:8100/api/v1/modules
+
+# Should return JSON with 5 modules
+
+-------------------------------------------------------------------
+STEP 12: Open Firewall Ports
+-------------------------------------------------------------------
+
+sudo ufw allow 8100/tcp
+sudo ufw allow 3200/tcp
+sudo ufw reload
+
+-------------------------------------------------------------------
+STEP 13: Get Your VPS IP Address
+-------------------------------------------------------------------
+
+hostname -I | awk '{print $1}'
+
+# Note this IP address
+
+-------------------------------------------------------------------
+STEP 14: Access from Your Browser
+-------------------------------------------------------------------
+
+Open these URLs in your browser (replace YOUR_VPS_IP):
+
+Frontend (UI):
+http://YOUR_VPS_IP:3200
+
+Backend API Documentation:
+http://YOUR_VPS_IP:8100/docs
+
+Health Check:
+http://YOUR_VPS_IP:8100/api/v1/health
+
+-------------------------------------------------------------------
+OPTIONAL: View Live Logs
+-------------------------------------------------------------------
+
+docker-compose logs -f
+
+# Press Ctrl+C to stop viewing logs
+
+-------------------------------------------------------------------
+USEFUL COMMANDS FOR LATER
+-------------------------------------------------------------------
+
+# View logs
+docker-compose logs -f
+
+# Restart all services
+docker-compose restart
+
+# Restart specific service
+docker-compose restart backend
+docker-compose restart frontend
+
+# Stop all services
+docker-compose down
+
+# Start all services
+docker-compose up -d
+
+# Check status
+docker-compose ps
+
+# Check resource usage
+docker stats
+
+-------------------------------------------------------------------
+TROUBLESHOOTING
+-------------------------------------------------------------------
+
+If containers won't start:
+1. docker-compose down
+2. docker system prune -f
+3. docker-compose build --no-cache
+4. docker-compose up -d
+
+If port is already in use:
+1. sudo lsof -i :8100
+2. sudo kill -9 <PID>
+3. docker-compose up -d
+
+If you can't access from browser:
+1. Check firewall: sudo ufw status
+2. Make sure ports are open: sudo ufw allow 8100/tcp && sudo ufw allow 3200/tcp
+3. Check containers are running: docker-compose ps
+4. Check logs: docker-compose logs
+
+-------------------------------------------------------------------
+SUCCESS CHECKLIST
+-------------------------------------------------------------------
+
+✅ All 3 containers show "Up" in docker-compose ps
+✅ curl http://localhost:8100/api/v1/health returns {"status":"healthy"}
+✅ http://YOUR_VPS_IP:3200 loads in browser (shows dashboard)
+✅ http://YOUR_VPS_IP:8100/docs shows API documentation
+✅ Dashboard shows "5" in the "Approved Modules" card
+✅ You can click "New Request" and see the form
+✅ You can click "Modules" and see 5 modules
+✅ No errors in docker-compose logs
+
+-------------------------------------------------------------------
+WHAT YOU GET
+-------------------------------------------------------------------
+
+After successful deployment:
+
+🌐 Frontend UI at http://YOUR_VPS_IP:3200
+   - Dashboard with statistics
+   - New Request form
+   - Request tracking
+   - Module catalog with search
+
+🔌 Backend API at http://YOUR_VPS_IP:8100
+   - REST API with all endpoints
+   - Interactive API documentation at /docs
+   - Health monitoring at /api/v1/health
+
+📦 5 Approved Terraform Modules
+   - VPC (networking)
+   - EC2 (compute)
+   - Security Group (security)
+   - ALB (load balancer)
+   - S3 (storage)
+
+-------------------------------------------------------------------
+NEXT STEPS AFTER DEPLOYMENT
+-------------------------------------------------------------------
+
+1. Browse to http://YOUR_VPS_IP:3200
+2. Click around the dashboard
+3. Click "Modules" to see available infrastructure
+4. Click "New Request" to create your first request
+5. Fill the form and submit
+6. Click "My Requests" to see your request
+
+-------------------------------------------------------------------
+NEED HELP?
+-------------------------------------------------------------------
+
+Check these files in your project:
+- QUICK_DEPLOY.md - Quick reference
+- FRONTEND_UPDATES.md - UI details
+- CHANGES_SUMMARY.md - What changed
+- DEPLOYMENT_CHECKLIST.md - Step-by-step guide
+
+View logs:
+docker-compose logs -f
+
+Check container status:
+docker-compose ps
+
+Test backend:
+curl http://localhost:8100/api/v1/health
+
+-------------------------------------------------------------------
+AUTOMATED DEPLOYMENT SCRIPT
+-------------------------------------------------------------------
+
+Alternatively, you can use the automated script:
+
+chmod +x deploy.sh
+./deploy.sh
+
+This will do steps 4-11 automatically.
+
+═══════════════════════════════════════════════════════════════
+                      DEPLOYMENT COMPLETE!
+═══════════════════════════════════════════════════════════════
+
+Access your portal at: http://YOUR_VPS_IP:3200
+
+═══════════════════════════════════════════════════════════════
