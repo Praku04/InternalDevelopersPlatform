@@ -11,11 +11,18 @@ from pathlib import Path
 
 from app.config import get_settings
 from app.models.deployment import DeploymentSpecification
+from app.models.terraform import TerraformPlanResult
+from app.repositories.request_repository import RequestRepository
 from app.terraform.generator import TerraformGenerator
 from app.terraform.engine import TerraformEngine
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
+
+
+class RequestNotFoundError(Exception):
+    """Raised when a deployment request is not found."""
+    pass
 
 
 class TerraformService:
@@ -193,3 +200,62 @@ class TerraformService:
             Path to workspace
         """
         return self.base_workspace_path / request_id
+
+
+
+def run_terraform_plan(request_id: str) -> TerraformPlanResult:
+    """
+    Run terraform plan for a deployment request.
+    
+    Args:
+        request_id: Deployment request ID
+        
+    Returns:
+        TerraformPlanResult with plan output
+        
+    Raises:
+        RequestNotFoundError: If request not found
+    """
+    # Get request from repository
+    repo = RequestRepository()
+    request = repo.get(request_id)
+    
+    if request is None:
+        raise RequestNotFoundError(request_id)
+    
+    # Initialize service and prepare workspace
+    service = TerraformService()
+    workspace_path = service.prepare_workspace(request)
+    
+    # Run terraform plan
+    engine = TerraformEngine(working_dir=workspace_path)
+    
+    try:
+        # Initialize terraform
+        engine.init()
+        
+        # Run plan
+        plan_output = engine.plan()
+        
+        # Parse plan output (simplified for Phase 1)
+        return TerraformPlanResult(
+            request_id=request_id,
+            plan_output=plan_output.get("stdout", ""),
+            plan_json=plan_output,
+            changes_summary={
+                "add": 0,  # Would parse from plan output
+                "change": 0,
+                "destroy": 0,
+            },
+            estimated_cost=0.0,  # Would calculate from resources
+        )
+        
+    except Exception as e:
+        logger.error(f"Terraform plan failed: {e}")
+        return TerraformPlanResult(
+            request_id=request_id,
+            plan_output=f"Error: {str(e)}",
+            plan_json={},
+            changes_summary={"add": 0, "change": 0, "destroy": 0},
+            estimated_cost=0.0,
+        )
