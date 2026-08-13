@@ -12,7 +12,7 @@ from pathlib import Path
 from app.config import get_settings
 from app.models.deployment import DeploymentSpecification
 from app.models.terraform import TerraformPlanResult
-from app.repositories.request_repository import RequestRepository
+from app.repositories.request_repository import get_request_repository
 from app.terraform.generator import TerraformGenerator
 from app.terraform.engine import TerraformEngine
 
@@ -217,7 +217,7 @@ def run_terraform_plan(request_id: str) -> TerraformPlanResult:
         RequestNotFoundError: If request not found
     """
     # Get request from repository
-    repo = RequestRepository()
+    repo = get_request_repository()
     request = repo.get(request_id)
     
     if request is None:

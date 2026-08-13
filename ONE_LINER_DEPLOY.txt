@@ -1,0 +1,20 @@
+═══════════════════════════════════════════════════════════════
+              ONE-LINER DEPLOYMENT COMMAND
+═══════════════════════════════════════════════════════════════
+
+Fixed: Changed RequestRepository() to get_request_repository()
+
+Copy and paste this on your VPS:
+
+cd ~/InternalDevelopersPlatform && git pull && docker-compose down && docker-compose build --no-cache backend && docker-compose up -d && sleep 15 && docker-compose ps && echo "" && echo "=== HEALTH CHECK ===" && curl http://localhost:8100/api/v1/health && echo "" && echo "" && echo "=== MODULES ===" && curl -s http://localhost:8100/api/v1/modules | python3 -m json.tool | head -50
+
+═══════════════════════════════════════════════════════════════
+
+If you see:
+- 3 containers "Up"
+- {"status":"healthy"}
+- JSON with modules
+
+Then open: http://YOUR_VPS_IP:3200
+
+═══════════════════════════════════════════════════════════════
