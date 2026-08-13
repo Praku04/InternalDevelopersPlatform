@@ -1,0 +1,220 @@
+═══════════════════════════════════════════════════════════════
+   FIX BACKEND ISSUE - RUN THESE COMMANDS ON YOUR VPS
+═══════════════════════════════════════════════════════════════
+
+The backend container is missing. Let's check logs and fix it.
+
+-------------------------------------------------------------------
+STEP 1: Check What Happened
+-------------------------------------------------------------------
+
+Run this to see backend logs (if container ever started):
+
+docker-compose logs backend --tail 50
+
+-------------------------------------------------------------------
+STEP 2: Quick Fix - Option A (Automated)
+-------------------------------------------------------------------
+
+chmod +x fix-backend.sh && ./fix-backend.sh
+
+-------------------------------------------------------------------
+STEP 2: Quick Fix - Option B (Manual)
+-------------------------------------------------------------------
+
+If the script doesn't work, run these commands:
+
+# Stop everything
+docker-compose down
+
+# Remove backend container and image
+docker rm -f internaldevelopersplatform-backend-1
+docker rmi internaldevelopersplatform-backend
+
+# Rebuild backend
+docker-compose build --no-cache backend
+
+# Start everything
+docker-compose up -d
+
+# Wait and check
+sleep 10
+docker-compose ps
+
+-------------------------------------------------------------------
+STEP 3: Check Backend Logs
+-------------------------------------------------------------------
+
+docker logs internaldevelopersplatform-backend-1
+
+# Look for errors in the output
+
+-------------------------------------------------------------------
+STEP 4: Test Backend
+-------------------------------------------------------------------
+
+curl http://localhost:8100/api/v1/health
+
+# Should return: {"status":"healthy"}
+
+-------------------------------------------------------------------
+COMMON ISSUES & SOLUTIONS
+-------------------------------------------------------------------
+
+Issue 1: "Port 8100 already in use"
+Solution:
+  sudo lsof -i :8100
+  sudo kill -9 <PID>
+  docker-compose up -d backend
+
+Issue 2: "Python module not found"
+Solution:
+  docker-compose build --no-cache backend
+  docker-compose up -d backend
+
+Issue 3: "Cannot connect to dynamodb"
+Solution:
+  docker-compose restart dynamodb-local
+  docker-compose restart backend
+
+Issue 4: Container keeps restarting
+Solution:
+  docker logs internaldevelopersplatform-backend-1 --follow
+  # Watch for errors
+
+-------------------------------------------------------------------
+MANUAL DEBUGGING
+-------------------------------------------------------------------
+
+# Check if backend container exists
+docker ps -a | grep backend
+
+# If it exists but stopped, check why
+docker logs internaldevelopersplatform-backend-1
+
+# Try starting it manually
+docker-compose up backend
+
+# Watch logs in real-time
+docker-compose logs -f backend
+
+-------------------------------------------------------------------
+COMPLETE CLEAN RESTART
+-------------------------------------------------------------------
+
+If nothing works, do a complete clean restart:
+
+# Stop everything
+docker-compose down
+
+# Clean Docker
+docker system prune -f
+
+# Remove all project containers
+docker rm -f $(docker ps -a | grep internaldevelopers | awk '{print $1}')
+
+# Remove all project images
+docker rmi -f $(docker images | grep internaldevelopers | awk '{print $3}')
+
+# Rebuild everything
+docker-compose build --no-cache
+
+# Start everything
+docker-compose up -d
+
+# Check status
+docker-compose ps
+
+# Check logs
+docker-compose logs -f
+
+-------------------------------------------------------------------
+VERIFY SUCCESS
+-------------------------------------------------------------------
+
+✅ Check 1: Container running
+docker-compose ps | grep backend
+
+Should show: internaldevelopersplatform-backend-1   Up
+
+✅ Check 2: Health endpoint works
+curl http://localhost:8100/api/v1/health
+
+Should return: {"status":"healthy"}
+
+✅ Check 3: Modules endpoint works
+curl http://localhost:8100/api/v1/modules
+
+Should return: JSON with modules
+
+✅ Check 4: Frontend can connect
+curl http://localhost:3200
+
+Should return: HTML page
+
+-------------------------------------------------------------------
+WHAT TO CHECK IN LOGS
+-------------------------------------------------------------------
+
+Good logs look like:
+  INFO:     Started server process
+  INFO:     Waiting for application startup.
+  INFO:     Application startup complete.
+  INFO:     Uvicorn running on http://0.0.0.0:8000
+
+Bad logs show:
+  ModuleNotFoundError: No module named 'X'
+  Address already in use
+  Connection refused
+  FATAL ERROR
+
+-------------------------------------------------------------------
+QUICK STATUS CHECK
+-------------------------------------------------------------------
+
+Run this to see everything at once:
+
+echo "=== Container Status ===" && \
+docker-compose ps && \
+echo "" && \
+echo "=== Backend Logs (last 20 lines) ===" && \
+docker logs internaldevelopersplatform-backend-1 --tail 20 2>&1 && \
+echo "" && \
+echo "=== Health Check ===" && \
+curl -s http://localhost:8100/api/v1/health || echo "❌ Failed"
+
+-------------------------------------------------------------------
+AFTER FIXING
+-------------------------------------------------------------------
+
+Once backend is running:
+
+1. Check all containers are up:
+   docker-compose ps
+
+2. Test backend:
+   curl http://localhost:8100/api/v1/health
+
+3. Test frontend:
+   Open http://YOUR_VPS_IP:3200 in browser
+
+4. Test API docs:
+   Open http://YOUR_VPS_IP:8100/docs in browser
+
+═══════════════════════════════════════════════════════════════
+           MOST LIKELY FIX (Try this first!)
+═══════════════════════════════════════════════════════════════
+
+docker-compose down && \
+docker-compose build --no-cache backend && \
+docker-compose up -d && \
+sleep 10 && \
+docker-compose ps && \
+curl http://localhost:8100/api/v1/health
+
+═══════════════════════════════════════════════════════════════
+
+Need more help? Run:
+  docker logs internaldevelopersplatform-backend-1 --tail 100
+
+And share the output.
