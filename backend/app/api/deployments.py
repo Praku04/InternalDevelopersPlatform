@@ -14,7 +14,7 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
 from app.models.deployment import DeploymentRequest, DeploymentStatus
-from app.repositories.request_repository import RequestRepository
+from app.repositories.request_repository import get_request_repository
 from app.services.azure_devops import PipelineService
 from app.services.terraform_service import TerraformService
 from app.terraform.generator import TerraformGenerator
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/deployments", tags=["deployments"])
 
 # Dependencies
-request_repo = RequestRepository()
+request_repo = get_request_repository()
 pipeline_service = PipelineService()
 terraform_service = TerraformService()
 
@@ -79,7 +79,7 @@ def trigger_deployment(payload: TriggerDeploymentRequest) -> dict[str, Any]:
     logger.info(f"Triggering deployment for request {request_id}")
     
     # Get request
-    deployment_request = request_repo.get_by_id(request_id)
+    deployment_request = request_repo.get(request_id)
     if not deployment_request:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -101,7 +101,7 @@ def trigger_deployment(payload: TriggerDeploymentRequest) -> dict[str, Any]:
         
         # Update status
         deployment_request.status = DeploymentStatus.PENDING
-        request_repo.update(deployment_request)
+        request_repo.create(deployment_request)
         
         # Trigger Azure DevOps pipeline
         pipeline_run = pipeline_service.trigger_deployment(deployment_request)
@@ -109,7 +109,7 @@ def trigger_deployment(payload: TriggerDeploymentRequest) -> dict[str, Any]:
         # Store pipeline run ID
         deployment_request.pipeline_run_id = str(pipeline_run.get("id", ""))
         deployment_request.status = DeploymentStatus.DEPLOYING
-        request_repo.update(deployment_request)
+        request_repo.create(deployment_request)
         
         return {
             "request_id": request_id,
@@ -122,7 +122,7 @@ def trigger_deployment(payload: TriggerDeploymentRequest) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to trigger deployment: {e}")
         deployment_request.status = DeploymentStatus.FAILED
-        request_repo.update(deployment_request)
+        request_repo.create(deployment_request)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to trigger deployment: {str(e)}",
@@ -140,7 +140,7 @@ def get_deployment(request_id: str) -> dict[str, Any]:
     Returns:
         Deployment details including status, resources, and logs
     """
-    deployment_request = request_repo.get_by_id(request_id)
+    deployment_request = request_repo.get(request_id)
     if not deployment_request:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -180,7 +180,7 @@ def get_deployment_status(request_id: str) -> dict[str, Any]:
     Returns:
         Current deployment status
     """
-    deployment_request = request_repo.get_by_id(request_id)
+    deployment_request = request_repo.get(request_id)
     if not deployment_request:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -210,7 +210,7 @@ def update_deployment_status(request_id: str, update: DeploymentStatusUpdate) ->
     """
     logger.info(f"Updating status for deployment {request_id}: {update.status}")
     
-    deployment_request = request_repo.get_by_id(request_id)
+    deployment_request = request_repo.get(request_id)
     if not deployment_request:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -230,7 +230,7 @@ def update_deployment_status(request_id: str, update: DeploymentStatusUpdate) ->
     if update.pipeline_run_id:
         deployment_request.pipeline_run_id = update.pipeline_run_id
     
-    request_repo.update(deployment_request)
+    request_repo.create(deployment_request)
     
     logger.info(f"Deployment {request_id} status updated to {new_status.value}")
     
@@ -248,7 +248,7 @@ def get_deployment_logs(request_id: str) -> dict[str, Any]:
     Returns:
         Pipeline execution logs
     """
-    deployment_request = request_repo.get_by_id(request_id)
+    deployment_request = request_repo.get(request_id)
     if not deployment_request:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -296,7 +296,7 @@ def update_plan(request_id: str, update: PlanUpdate) -> dict[str, str]:
     """
     logger.info(f"Updating plan for deployment {request_id}")
     
-    deployment_request = request_repo.get_by_id(request_id)
+    deployment_request = request_repo.get(request_id)
     if not deployment_request:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -326,7 +326,7 @@ def update_security_scan(request_id: str, update: SecurityUpdate) -> dict[str, s
     """
     logger.info(f"Updating security scan for deployment {request_id}: {update.scan_type}")
     
-    deployment_request = request_repo.get_by_id(request_id)
+    deployment_request = request_repo.get(request_id)
     if not deployment_request:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

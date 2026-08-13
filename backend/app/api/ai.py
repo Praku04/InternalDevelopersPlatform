@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
 from app.models.deployment import AIDeploymentRecommendation, DeploymentRequest, DeploymentSource
-from app.repositories.request_repository import RequestRepository
+from app.repositories.request_repository import get_request_repository
 from app.services.ai import ModuleDiscoveryService
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/v1/ai", tags=["ai"])
 
 # Dependencies
 module_discovery = ModuleDiscoveryService()
-request_repo = RequestRepository()
+request_repo = get_request_repository()
 
 
 class AIRequest(BaseModel):
