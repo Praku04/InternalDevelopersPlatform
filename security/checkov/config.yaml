@@ -1,0 +1,75 @@
+# Checkov Security Policy Configuration
+# Defines security checks for Terraform infrastructure
+
+# Framework configuration
+framework:
+  - terraform
+  - terraform_plan
+
+# Output settings
+output: json
+compact: true
+quiet: false
+
+# Skip specific checks (with justification)
+skip-check:
+  # CKV_AWS_19 - S3 encryption - handled by module defaults
+  # CKV_AWS_20 - S3 versioning - not required for all buckets
+
+# Soft-fail checks (warning only, don't block deployment)
+soft-fail-checks:
+  - CKV_AWS_144  # Ensure S3 bucket has cross-region replication
+  - CKV_AWS_145  # Ensure S3 bucket has server access logging
+
+# Hard-fail checks (block deployment)
+hard-fail-checks:
+  - CKV_AWS_18   # Ensure S3 bucket has access logging enabled
+  - CKV_AWS_19   # Ensure S3 bucket has server-side encryption enabled
+  - CKV_AWS_21   # Ensure S3 bucket has versioning enabled
+  - CKV_AWS_23   # Ensure security group does not allow ingress from 0.0.0.0/0 to port 22
+  - CKV_AWS_24   # Ensure security group does not allow ingress from 0.0.0.0/0 to port 3389
+  - CKV_AWS_25   # Ensure security group does not allow ingress from 0.0.0.0/0 to all ports
+  - CKV_AWS_33   # Ensure KMS key policy does not contain wildcard principal
+  - CKV_AWS_34   # Ensure no IAM policies allow full "*:*" administrative privileges
+  - CKV_AWS_40   # Ensure IAM policies do not allow full "*" administrative privileges
+  - CKV_AWS_46   # Ensure EC2 instance has detailed monitoring enabled
+  - CKV_AWS_47   # Ensure EC2 instance has IMDSv2 enabled
+  - CKV_AWS_79   # Ensure EC2 instance Metadata Service Version 1 is not enabled
+  - CKV_AWS_88   # Ensure EC2 instance type is not in deprecated list
+  - CKV_AWS_89   # Ensure DynamoDB point in time recovery is enabled
+  - CKV_AWS_116  # Ensure Lambda function configured for function-level concurrent execution limit
+  - CKV_AWS_117  # Ensure Lambda function configured for a Dead Letter Queue
+  - CKV_AWS_126  # Ensure RDS database is encrypted
+  - CKV_AWS_129  # Ensure RDS cluster has IAM authentication enabled
+  - CKV_AWS_130  # Ensure VPC subnets do not assign public IP by default
+  - CKV_AWS_131  # Ensure ALB drops invalid HTTP headers
+  - CKV_AWS_150  # Ensure RDS is encrypted at rest
+  - CKV_AWS_157  # Ensure RDS instances are not publicly accessible
+  - CKV_AWS_158  # Ensure CloudWatch log groups are encrypted
+  - CKV_AWS_161  # Ensure RDS database has IAM authentication enabled
+
+# External check directories
+external-checks-dir:
+  - ./custom-checks
+
+# Baseline file (to track accepted risks)
+baseline: security/checkov/baseline.json
+
+# Report formats
+output-format:
+  - json
+  - cli
+
+# Download external modules
+download-external-modules: false
+
+# Check severity levels
+# CRITICAL: Must fix immediately, blocks deployment
+# HIGH: Should fix before production, blocks deployment
+# MEDIUM: Should fix, warning only
+# LOW: Optional, informational only
+check-severity:
+  critical: true
+  high: true
+  medium: false
+  low: false

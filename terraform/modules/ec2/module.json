@@ -1,0 +1,20 @@
+{
+  "module_name": "ec2",
+  "version": "1.0.0",
+  "category": "compute",
+  "description": "Standard enterprise EC2 module with IMDSv2, mandatory EBS encryption, monitoring, and backup tagging.",
+  "path": "terraform/modules/ec2",
+  "status": "approved",
+  "supported_environments": ["dev", "uat", "prod"],
+  "capabilities": [
+    "private-subnet",
+    "encrypted-ebs",
+    "monitoring",
+    "iam-role",
+    "imdsv2",
+    "backup-tagging"
+  ],
+  "security_status": "approved",
+  "inputs": ["application", "environment", "instance_type", "instance_count", "ami_id", "subnet_ids", "security_group_ids", "associate_public_ip", "ebs_volume_size", "ebs_encrypted", "kms_key_id", "detailed_monitoring", "enable_backup", "instance_profile_name"],
+  "outputs": ["instance_ids", "private_ips", "instance_arns"]
+}

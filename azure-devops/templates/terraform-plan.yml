@@ -1,0 +1,210 @@
+# Terraform Plan Template
+# Generates and publishes Terraform execution plan
+
+parameters:
+- name: requestId
+  type: string
+- name: environment
+  type: string
+- name: workingDirectory
+  type: string
+- name: awsServiceConnection
+  type: string
+- name: terraformVersion
+  type: string
+  default: '1.9.0'
+
+steps:
+- checkout: self
+  displayName: 'Checkout Repository'
+
+- task: TerraformInstaller@0
+  displayName: 'Install Terraform'
+  inputs:
+    terraformVersion: ${{ parameters.terraformVersion }}
+
+- task: AWSShellScript@1
+  displayName: 'Terraform Init with Remote State'
+  inputs:
+    awsCredentials: ${{ parameters.awsServiceConnection }}
+    regionName: '$(AWS_REGION)'
+    scriptType: 'inline'
+    inlineScript: |
+      cd ${{ parameters.workingDirectory }}
+      
+      echo "Initializing Terraform with S3 backend..."
+      
+      # Configure backend
+      cat > backend.tf << EOF
+      terraform {
+        backend "s3" {
+          bucket         = "$(S3_TFSTATE_BUCKET)"
+          key            = "deployments/${{ parameters.environment }}/${{ parameters.requestId }}/terraform.tfstate"
+          region         = "$(AWS_REGION)"
+          encrypt        = true
+          dynamodb_table = "$(DYNAMODB_LOCK_TABLE)"
+        }
+      }
+      EOF
+      
+      terraform init -input=false
+      
+      if [ $? -ne 0 ]; then
+        echo "##vso[task.logissue type=error]Terraform initialization failed"
+        exit 1
+      fi
+
+- task: AWSShellScript@1
+  displayName: 'Terraform Plan'
+  inputs:
+    awsCredentials: ${{ parameters.awsServiceConnection }}
+    regionName: '$(AWS_REGION)'
+    scriptType: 'inline'
+    inlineScript: |
+      cd ${{ parameters.workingDirectory }}
+      
+      echo "Generating Terraform plan..."
+      
+      terraform plan \
+        -input=false \
+        -out=tfplan \
+        -detailed-exitcode \
+        -var-file=terraform.tfvars
+      
+      PLAN_EXIT_CODE=$?
+      
+      echo "Plan exit code: $PLAN_EXIT_CODE"
+      # 0 = no changes, 1 = error, 2 = changes present
+      
+      if [ $PLAN_EXIT_CODE -eq 1 ]; then
+        echo "##vso[task.logissue type=error]Terraform plan failed"
+        exit 1
+      fi
+      
+      # Convert plan to JSON for analysis
+      terraform show -json tfplan > tfplan.json
+      
+      # Generate human-readable plan
+      terraform show tfplan > tfplan.txt
+      
+      echo "Plan generated successfully"
+
+- script: |
+    cd ${{ parameters.workingDirectory }}
+    
+    echo "Analyzing Terraform plan..."
+    
+    # Extract resource changes
+    RESOURCES_ADD=$(jq -r '[.resource_changes[]? | select(.change.actions[]? == "create")] | length' tfplan.json)
+    RESOURCES_CHANGE=$(jq -r '[.resource_changes[]? | select(.change.actions[]? == "update")] | length' tfplan.json)
+    RESOURCES_DESTROY=$(jq -r '[.resource_changes[]? | select(.change.actions[]? == "delete")] | length' tfplan.json)
+    
+    echo "Plan Summary:"
+    echo "  Resources to create: $RESOURCES_ADD"
+    echo "  Resources to change: $RESOURCES_CHANGE"
+    echo "  Resources to destroy: $RESOURCES_DESTROY"
+    
+    # Create summary file
+    cat > plan-summary.json << EOF
+    {
+      "request_id": "${{ parameters.requestId }}",
+      "environment": "${{ parameters.environment }}",
+      "resources_to_add": $RESOURCES_ADD,
+      "resources_to_change": $RESOURCES_CHANGE,
+      "resources_to_destroy": $RESOURCES_DESTROY,
+      "has_changes": $([ $RESOURCES_ADD -gt 0 ] || [ $RESOURCES_CHANGE -gt 0 ] || [ $RESOURCES_DESTROY -gt 0 ] && echo "true" || echo "false"),
+      "pipeline_run_id": "$(Build.BuildId)"
+    }
+    EOF
+    
+    cat plan-summary.json
+    
+    # Warning for destructive changes
+    if [ "$RESOURCES_DESTROY" -gt 0 ]; then
+      echo "##vso[task.logissue type=warning]Plan includes $RESOURCES_DESTROY resource(s) to be destroyed"
+    fi
+  displayName: 'Analyze Plan'
+
+- script: |
+    cd ${{ parameters.workingDirectory }}
+    
+    echo "Estimating costs..."
+    
+    # Basic cost estimation logic
+    # In production, integrate with AWS Pricing API or tools like Infracost
+    
+    COST_ESTIMATE=0
+    
+    # EC2 instance costs (rough estimate)
+    EC2_COUNT=$(jq -r '[.resource_changes[]? | select(.type == "aws_instance" and .change.actions[]? == "create")] | length' tfplan.json)
+    if [ "$EC2_COUNT" -gt 0 ]; then
+      # Rough estimate: $30/month per t3.micro
+      COST_ESTIMATE=$((COST_ESTIMATE + EC2_COUNT * 30))
+      echo "EC2 instances: $EC2_COUNT x $30 = $((EC2_COUNT * 30))"
+    fi
+    
+    # EBS volumes
+    EBS_COUNT=$(jq -r '[.resource_changes[]? | select(.type == "aws_ebs_volume" and .change.actions[]? == "create")] | length' tfplan.json)
+    if [ "$EBS_COUNT" -gt 0 ]; then
+      # Rough estimate: $10/month per 100GB volume
+      COST_ESTIMATE=$((COST_ESTIMATE + EBS_COUNT * 10))
+      echo "EBS volumes: $EBS_COUNT x $10 = $((EBS_COUNT * 10))"
+    fi
+    
+    # ALB
+    ALB_COUNT=$(jq -r '[.resource_changes[]? | select(.type == "aws_lb" and .change.actions[]? == "create")] | length' tfplan.json)
+    if [ "$ALB_COUNT" -gt 0 ]; then
+      # Rough estimate: $20/month per ALB
+      COST_ESTIMATE=$((COST_ESTIMATE + ALB_COUNT * 20))
+      echo "ALBs: $ALB_COUNT x $20 = $((ALB_COUNT * 20))"
+    fi
+    
+    echo "Estimated monthly cost: \$$COST_ESTIMATE USD"
+    echo "Note: This is a rough estimate. Actual costs may vary."
+    
+    # Save cost estimate
+    cat > cost-estimate.json << EOF
+    {
+      "request_id": "${{ parameters.requestId }}",
+      "estimated_monthly_cost": $COST_ESTIMATE,
+      "currency": "USD",
+      "note": "Rough estimate. Actual costs may vary."
+    }
+    EOF
+  displayName: 'Estimate Costs'
+
+- task: PublishPipelineArtifact@1
+  displayName: 'Publish Plan Files'
+  inputs:
+    targetPath: '${{ parameters.workingDirectory }}'
+    artifact: 'terraform-plan-${{ parameters.requestId }}'
+    publishLocation: 'pipeline'
+  condition: always()
+
+- task: PowerShell@2
+  displayName: 'Update Plan Status'
+  inputs:
+    targetType: 'inline'
+    script: |
+      $requestId = "${{ parameters.requestId }}"
+      $apiUrl = "$(BACKEND_API_URL)/api/v1/deployments/$requestId/plan"
+      
+      # Read plan summary
+      $planSummary = Get-Content "${{ parameters.workingDirectory }}/plan-summary.json" | ConvertFrom-Json
+      $costEstimate = Get-Content "${{ parameters.workingDirectory }}/cost-estimate.json" | ConvertFrom-Json
+      
+      $body = @{
+        status = "PLANNED"
+        plan_summary = $planSummary
+        cost_estimate = $costEstimate
+        pipeline_run_id = "$(Build.BuildId)"
+        plan_artifact = "terraform-plan-$requestId"
+      } | ConvertTo-Json -Depth 10
+      
+      try {
+        Invoke-RestMethod -Uri $apiUrl -Method POST -Body $body -ContentType "application/json"
+        Write-Host "Plan uploaded successfully"
+      } catch {
+        Write-Warning "Failed to upload plan: $_"
+      }
+  condition: succeeded()

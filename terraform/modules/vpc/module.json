@@ -1,0 +1,19 @@
+{
+  "module_name": "vpc",
+  "version": "1.0.0",
+  "category": "networking",
+  "description": "Approved enterprise VPC module with public/private subnets, NAT gateway, and flow logs.",
+  "path": "terraform/modules/vpc",
+  "status": "approved",
+  "supported_environments": ["dev", "uat", "prod"],
+  "capabilities": [
+    "public-subnet",
+    "private-subnet",
+    "nat-gateway",
+    "flow-logs",
+    "multi-az"
+  ],
+  "security_status": "approved",
+  "inputs": ["application", "environment", "cidr_block", "azs", "public_subnet_cidrs", "private_subnet_cidrs", "enable_nat_gateway", "single_nat_gateway", "enable_flow_logs"],
+  "outputs": ["vpc_id", "vpc_cidr_block", "public_subnet_ids", "private_subnet_ids", "nat_gateway_ids", "internet_gateway_id"]
+}

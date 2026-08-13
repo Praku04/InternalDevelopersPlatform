@@ -1,0 +1,18 @@
+{
+  "module_name": "alb",
+  "version": "1.0.0",
+  "category": "networking",
+  "description": "Approved enterprise Application Load Balancer module with optional HTTPS redirect and access logging.",
+  "path": "terraform/modules/alb",
+  "status": "approved",
+  "supported_environments": ["dev", "uat", "prod"],
+  "capabilities": [
+    "http-listener",
+    "https-listener",
+    "access-logs",
+    "target-group"
+  ],
+  "security_status": "approved",
+  "inputs": ["application", "environment", "vpc_id", "subnet_ids", "security_group_ids", "internal", "target_port", "target_ids", "health_check_path", "enable_deletion_protection", "enable_access_logs", "access_logs_bucket", "certificate_arn"],
+  "outputs": ["alb_arn", "alb_dns_name", "target_group_arn"]
+}

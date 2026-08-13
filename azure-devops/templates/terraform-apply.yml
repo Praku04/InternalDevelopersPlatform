@@ -1,0 +1,233 @@
+# Terraform Apply Template
+# Applies approved Terraform plan to AWS
+
+parameters:
+- name: requestId
+  type: string
+- name: environment
+  type: string
+- name: workingDirectory
+  type: string
+- name: awsServiceConnection
+  type: string
+- name: terraformVersion
+  type: string
+  default: '1.9.0'
+
+steps:
+- checkout: self
+  displayName: 'Checkout Repository'
+
+- task: TerraformInstaller@0
+  displayName: 'Install Terraform'
+  inputs:
+    terraformVersion: ${{ parameters.terraformVersion }}
+
+- task: DownloadPipelineArtifact@2
+  displayName: 'Download Plan Artifact'
+  inputs:
+    buildType: 'current'
+    artifactName: 'terraform-plan-${{ parameters.requestId }}'
+    targetPath: '${{ parameters.workingDirectory }}'
+
+- task: AWSShellScript@1
+  displayName: 'Terraform Init'
+  inputs:
+    awsCredentials: ${{ parameters.awsServiceConnection }}
+    regionName: '$(AWS_REGION)'
+    scriptType: 'inline'
+    inlineScript: |
+      cd ${{ parameters.workingDirectory }}
+      
+      echo "Re-initializing Terraform..."
+      terraform init -input=false
+      
+      if [ $? -ne 0 ]; then
+        echo "##vso[task.logissue type=error]Terraform initialization failed"
+        exit 1
+      fi
+
+- task: AWSShellScript@1
+  displayName: 'Terraform Apply'
+  inputs:
+    awsCredentials: ${{ parameters.awsServiceConnection }}
+    regionName: '$(AWS_REGION)'
+    scriptType: 'inline'
+    inlineScript: |
+      cd ${{ parameters.workingDirectory }}
+      
+      echo "Applying Terraform plan for request: ${{ parameters.requestId }}"
+      echo "Environment: ${{ parameters.environment }}"
+      echo "AWS Region: $(AWS_REGION)"
+      
+      # Verify plan file exists
+      if [ ! -f "tfplan" ]; then
+        echo "##vso[task.logissue type=error]Terraform plan file not found"
+        exit 1
+      fi
+      
+      # Apply the plan
+      terraform apply -input=false -auto-approve tfplan
+      
+      APPLY_EXIT_CODE=$?
+      
+      if [ $APPLY_EXIT_CODE -ne 0 ]; then
+        echo "##vso[task.logissue type=error]Terraform apply failed with exit code: $APPLY_EXIT_CODE"
+        
+        # Capture state for debugging
+        terraform show > failed-state.txt
+        
+        exit 1
+      fi
+      
+      echo "Terraform apply completed successfully"
+
+- task: AWSShellScript@1
+  displayName: 'Capture Outputs'
+  inputs:
+    awsCredentials: ${{ parameters.awsServiceConnection }}
+    regionName: '$(AWS_REGION)'
+    scriptType: 'inline'
+    inlineScript: |
+      cd ${{ parameters.workingDirectory }}
+      
+      echo "Capturing Terraform outputs..."
+      
+      terraform output -json > outputs.json
+      terraform show -json > state.json
+      
+      # Extract created resources
+      jq -r '.values.root_module.resources[]? | 
+        select(.mode == "managed") | 
+        {
+          type: .type,
+          name: .name,
+          address: .address,
+          values: .values
+        }' state.json > resources.json
+      
+      echo "Outputs captured successfully"
+      
+      cat outputs.json
+  condition: succeeded()
+
+- script: |
+    cd ${{ parameters.workingDirectory }}
+    
+    echo "Generating deployment summary..."
+    
+    # Count created resources by type
+    RESOURCES=$(jq -r 'group_by(.type) | 
+      map({
+        type: .[0].type,
+        count: length,
+        resources: map(.address)
+      })' resources.json)
+    
+    # Create deployment summary
+    cat > deployment-summary.json << EOF
+    {
+      "request_id": "${{ parameters.requestId }}",
+      "environment": "${{ parameters.environment }}",
+      "status": "COMPLETED",
+      "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+      "pipeline_run_id": "$(Build.BuildId)",
+      "resources": $RESOURCES,
+      "outputs": $(cat outputs.json)
+    }
+    EOF
+    
+    echo "Deployment Summary:"
+    cat deployment-summary.json
+  displayName: 'Generate Deployment Summary'
+  condition: succeeded()
+
+- task: PublishPipelineArtifact@1
+  displayName: 'Publish Apply Results'
+  inputs:
+    targetPath: '${{ parameters.workingDirectory }}'
+    artifact: 'terraform-apply-${{ parameters.requestId }}'
+    publishLocation: 'pipeline'
+  condition: always()
+
+- task: PowerShell@2
+  displayName: 'Update Deployment Status - Success'
+  inputs:
+    targetType: 'inline'
+    script: |
+      $requestId = "${{ parameters.requestId }}"
+      $apiUrl = "$(BACKEND_API_URL)/api/v1/deployments/$requestId/status"
+      
+      # Read deployment summary
+      $summary = Get-Content "${{ parameters.workingDirectory }}/deployment-summary.json" | ConvertFrom-Json
+      
+      $body = @{
+        status = "COMPLETED"
+        message = "Infrastructure deployed successfully"
+        deployment_summary = $summary
+        pipeline_run_id = "$(Build.BuildId)"
+        completed_at = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+      } | ConvertTo-Json -Depth 10
+      
+      try {
+        Invoke-RestMethod -Uri $apiUrl -Method PUT -Body $body -ContentType "application/json"
+        Write-Host "Deployment status updated to COMPLETED"
+      } catch {
+        Write-Warning "Failed to update status: $_"
+      }
+  condition: succeeded()
+
+- task: PowerShell@2
+  displayName: 'Update Deployment Status - Failed'
+  inputs:
+    targetType: 'inline'
+    script: |
+      $requestId = "${{ parameters.requestId }}"
+      $apiUrl = "$(BACKEND_API_URL)/api/v1/deployments/$requestId/status"
+      
+      $body = @{
+        status = "FAILED"
+        message = "Terraform apply failed. Check pipeline logs for details."
+        pipeline_run_id = "$(Build.BuildId)"
+        failed_at = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+      } | ConvertTo-Json -Depth 10
+      
+      try {
+        Invoke-RestMethod -Uri $apiUrl -Method PUT -Body $body -ContentType "application/json"
+        Write-Host "Deployment status updated to FAILED"
+      } catch {
+        Write-Warning "Failed to update status: $_"
+      }
+  condition: failed()
+
+- task: AWSShellScript@1
+  displayName: 'Tag Resources'
+  inputs:
+    awsCredentials: ${{ parameters.awsServiceConnection }}
+    regionName: '$(AWS_REGION)'
+    scriptType: 'inline'
+    inlineScript: |
+      cd ${{ parameters.workingDirectory }}
+      
+      echo "Tagging deployed resources..."
+      
+      # Read resource list
+      RESOURCE_IDS=$(jq -r '.[]? | select(.values.id != null) | .values.id' resources.json)
+      
+      for RESOURCE_ID in $RESOURCE_IDS; do
+        echo "Tagging resource: $RESOURCE_ID"
+        
+        aws resourcegroupstaggingapi tag-resources \
+          --resource-arn-list "$RESOURCE_ID" \
+          --tags \
+            "ManagedBy=ai-cloud-platform" \
+            "RequestId=${{ parameters.requestId }}" \
+            "Environment=${{ parameters.environment }}" \
+            "DeployedBy=azure-devops" \
+            "PipelineId=$(Build.BuildId)" \
+          2>/dev/null || echo "Warning: Could not tag $RESOURCE_ID"
+      done
+      
+      echo "Resource tagging completed"
+  condition: succeeded()
+  continueOnError: true

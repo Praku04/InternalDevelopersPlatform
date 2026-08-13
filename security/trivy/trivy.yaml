@@ -1,0 +1,91 @@
+# Trivy Security Scanning Configuration
+# For Terraform infrastructure-as-code scanning
+
+# Scan settings
+scan:
+  security-checks: config,secret,vuln
+  severity: CRITICAL,HIGH,MEDIUM,LOW
+  
+# Skip files/directories
+skip-dirs:
+  - .terraform
+  - .git
+  - node_modules
+  - __pycache__
+
+skip-files:
+  - "*.md"
+  - "*.txt"
+  - ".gitignore"
+
+# Timeout settings
+timeout: 10m
+
+# Cache settings
+cache:
+  backend: fs
+  ttl: 24h
+
+# Output settings
+format: json
+output: trivy-results.json
+
+# Exit code
+exit-code: 0  # Don't fail on findings (handled by pipeline logic)
+
+# Severity filtering
+# CRITICAL: Immediate action required
+# HIGH: Fix before deployment
+# MEDIUM: Should fix
+# LOW: Informational
+
+# Ignore unfixed vulnerabilities (optional)
+ignore-unfixed: false
+
+# Policy bundles
+policy:
+  - builtin:
+      - appshield
+      - kubernetes
+      - docker
+      - terraform
+
+# Misconfiguration scanning
+misconfig:
+  # Terraform-specific checks
+  terraform:
+    # Check for sensitive data in variables
+    - check: terraform-aws-security-group-no-public-ingress-sgr
+      severity: HIGH
+    
+    - check: terraform-aws-iam-no-wildcards-policies
+      severity: CRITICAL
+    
+    - check: terraform-aws-s3-encryption-enabled
+      severity: HIGH
+    
+    - check: terraform-aws-rds-encryption-enabled
+      severity: HIGH
+    
+    - check: terraform-aws-ec2-user-data-no-secrets
+      severity: CRITICAL
+    
+    - check: terraform-aws-iam-no-policy-wildcards
+      severity: HIGH
+
+# Secret scanning
+secret:
+  enabled: true
+  # Custom secret patterns
+  config: security/trivy/secret-config.yaml
+
+# Vulnerability database
+db:
+  repository: ghcr.io/aquasecurity/trivy-db
+  skip-update: false
+
+# Report settings
+report:
+  format: template
+  template: "@/contrib/html.tpl"
+  output: trivy-report.html

@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DeploymentSpecification",
+  "description": "Canonical contract between UI, AI and Terraform. Every infrastructure request — self-service or AI-generated — is normalized into this shape before it reaches the policy engine.",
+  "type": "object",
+  "required": ["request_id", "source", "user_id", "application", "environment", "region", "resources"],
+  "properties": {
+    "request_id": { "type": "string" },
+    "source": { "type": "string", "enum": ["self_service", "ai_assistant"] },
+    "user_id": { "type": "string" },
+    "application": { "type": "string" },
+    "environment": { "type": "string", "enum": ["dev", "uat", "prod"] },
+    "region": { "type": "string" },
+    "resources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["type", "module", "version", "action", "configuration"],
+        "properties": {
+          "type": { "type": "string", "enum": ["vpc", "ec2", "security-group", "alb", "s3", "rds"] },
+          "module": { "type": "string" },
+          "version": { "type": "string" },
+          "action": { "type": "string", "enum": ["reuse", "generate"] },
+          "configuration": { "type": "object" }
+        }
+      }
+    },
+    "missing_modules": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "security_requirements": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "approval_required": { "type": "boolean" }
+  }
+}

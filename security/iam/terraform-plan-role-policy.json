@@ -1,0 +1,73 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "TerraformPlanReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:Describe*",
+        "ec2:Get*",
+        "vpc:Describe*",
+        "vpc:Get*",
+        "s3:List*",
+        "s3:Get*",
+        "rds:Describe*",
+        "rds:List*",
+        "elasticloadbalancing:Describe*",
+        "iam:Get*",
+        "iam:List*",
+        "kms:Describe*",
+        "kms:List*",
+        "lambda:Get*",
+        "lambda:List*",
+        "dynamodb:Describe*",
+        "dynamodb:List*",
+        "eks:Describe*",
+        "eks:List*",
+        "cloudwatch:Describe*",
+        "cloudwatch:Get*",
+        "cloudwatch:List*",
+        "logs:Describe*",
+        "logs:Get*",
+        "logs:List*",
+        "tag:Get*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "TerraformStateAccess",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::ai-cloud-platform-tfstate-*/*"
+      ]
+    },
+    {
+      "Sid": "TerraformStateBucketList",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket",
+        "s3:GetBucketVersioning"
+      ],
+      "Resource": [
+        "arn:aws:s3:::ai-cloud-platform-tfstate-*"
+      ]
+    },
+    {
+      "Sid": "TerraformStateLocking",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:DeleteItem"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:*:*:table/ai-cloud-platform-tfstate-lock"
+      ]
+    }
+  ]
+}

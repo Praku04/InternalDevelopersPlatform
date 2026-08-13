@@ -1,0 +1,158 @@
+# Main Terraform Deployment Pipeline
+# Triggered by backend API when a deployment request is created
+# Executes: validate → security → plan → approve → apply
+
+name: $(BuildDefinitionName)_$(Date:yyyyMMdd)$(Rev:.r)
+
+trigger: none # Triggered by API, not by commits
+
+parameters:
+- name: requestId
+  displayName: 'Deployment Request ID'
+  type: string
+  
+- name: environment
+  displayName: 'Target Environment'
+  type: string
+  values:
+  - dev
+  - uat
+  - prod
+  
+- name: workspacePath
+  displayName: 'Terraform Workspace Path'
+  type: string
+  default: 'terraform/generated'
+
+variables:
+- group: terraform-config
+- name: workingDirectory
+  value: '$(System.DefaultWorkingDirectory)/$(workspacePath)/${{ parameters.requestId }}'
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages:
+- stage: Validate
+  displayName: 'Validate Terraform Configuration'
+  jobs:
+  - job: TerraformValidate
+    displayName: 'Terraform Format and Validate'
+    steps:
+    - template: ../templates/terraform-validate.yml
+      parameters:
+        requestId: ${{ parameters.requestId }}
+        workingDirectory: $(workingDirectory)
+
+- stage: SecurityScan
+  displayName: 'Security and Compliance Scanning'
+  dependsOn: Validate
+  jobs:
+  - job: Checkov
+    displayName: 'Checkov Policy Scan'
+    steps:
+    - template: ../templates/security-scan.yml
+      parameters:
+        requestId: ${{ parameters.requestId }}
+        workingDirectory: $(workingDirectory)
+        scanType: 'checkov'
+        
+  - job: Trivy
+    displayName: 'Trivy Vulnerability Scan'
+    steps:
+    - template: ../templates/security-scan.yml
+      parameters:
+        requestId: ${{ parameters.requestId }}
+        workingDirectory: $(workingDirectory)
+        scanType: 'trivy'
+
+- stage: Plan
+  displayName: 'Terraform Plan'
+  dependsOn: SecurityScan
+  jobs:
+  - job: TerraformPlan
+    displayName: 'Generate Terraform Plan'
+    steps:
+    - template: ../templates/terraform-plan.yml
+      parameters:
+        requestId: ${{ parameters.requestId }}
+        environment: ${{ parameters.environment }}
+        workingDirectory: $(workingDirectory)
+        awsServiceConnection: 'aws-terraform-plan'
+
+- stage: Approval
+  displayName: 'Deployment Approval'
+  dependsOn: Plan
+  jobs:
+  - deployment: ApprovalGate
+    displayName: 'Wait for Approval'
+    environment: ${{ upper(parameters.environment) }}
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: none
+          - script: |
+              echo "Deployment approved for environment: ${{ parameters.environment }}"
+              echo "Request ID: ${{ parameters.requestId }}"
+            displayName: 'Approval Received'
+
+- stage: Apply
+  displayName: 'Terraform Apply'
+  dependsOn: Approval
+  jobs:
+  - job: TerraformApply
+    displayName: 'Apply Infrastructure Changes'
+    steps:
+    - template: ../templates/terraform-apply.yml
+      parameters:
+        requestId: ${{ parameters.requestId }}
+        environment: ${{ parameters.environment }}
+        workingDirectory: $(workingDirectory)
+        awsServiceConnection: 'aws-terraform-apply'
+
+- stage: PostDeployment
+  displayName: 'Post-Deployment Validation'
+  dependsOn: Apply
+  jobs:
+  - job: Validate
+    displayName: 'Validate Resources'
+    steps:
+    - task: AWSShellScript@1
+      displayName: 'Verify AWS Resources'
+      inputs:
+        awsCredentials: 'aws-terraform-plan'
+        regionName: '$(AWS_REGION)'
+        scriptType: 'inline'
+        inlineScript: |
+          echo "Validating deployed resources for request ${{ parameters.requestId }}"
+          
+          # Read outputs from Terraform state
+          cd $(workingDirectory)
+          terraform output -json > outputs.json
+          
+          # Verify resources exist
+          if [ -f outputs.json ]; then
+            echo "Terraform outputs retrieved successfully"
+            cat outputs.json
+          else
+            echo "##vso[task.logissue type=error]Failed to retrieve Terraform outputs"
+            exit 1
+          fi
+          
+    - task: PowerShell@2
+      displayName: 'Update Deployment Status'
+      inputs:
+        targetType: 'inline'
+        script: |
+          $requestId = "${{ parameters.requestId }}"
+          $apiUrl = "$(BACKEND_API_URL)/api/v1/deployments/$requestId/status"
+          
+          $body = @{
+            status = "COMPLETED"
+            message = "Infrastructure deployed successfully"
+            pipeline_run_id = "$(Build.BuildId)"
+          } | ConvertTo-Json
+          
+          Invoke-RestMethod -Uri $apiUrl -Method PUT -Body $body -ContentType "application/json"
+          Write-Host "Deployment status updated to COMPLETED"

@@ -1,0 +1,19 @@
+{
+  "module_name": "s3",
+  "version": "1.0.0",
+  "category": "storage",
+  "description": "Approved enterprise S3 module with enforced encryption, blocked public access, versioning, and logging.",
+  "path": "terraform/modules/s3",
+  "status": "approved",
+  "supported_environments": ["dev", "uat", "prod"],
+  "capabilities": [
+    "encryption",
+    "public-access-blocked",
+    "versioning",
+    "logging",
+    "lifecycle-policy"
+  ],
+  "security_status": "approved",
+  "inputs": ["application", "environment", "bucket_suffix", "versioning_enabled", "kms_key_id", "enable_logging", "logging_target_bucket", "lifecycle_enabled", "noncurrent_version_expiration_days"],
+  "outputs": ["bucket_id", "bucket_arn"]
+}

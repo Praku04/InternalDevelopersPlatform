@@ -1,0 +1,286 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "TerraformEC2Management",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:RunInstances",
+        "ec2:TerminateInstances",
+        "ec2:StopInstances",
+        "ec2:StartInstances",
+        "ec2:CreateTags",
+        "ec2:DeleteTags",
+        "ec2:ModifyInstanceAttribute",
+        "ec2:Describe*",
+        "ec2:Get*"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": [
+            "ap-south-1",
+            "ap-southeast-1"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "TerraformVPCManagement",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateVpc",
+        "ec2:DeleteVpc",
+        "ec2:ModifyVpcAttribute",
+        "ec2:CreateSubnet",
+        "ec2:DeleteSubnet",
+        "ec2:ModifySubnetAttribute",
+        "ec2:CreateInternetGateway",
+        "ec2:DeleteInternetGateway",
+        "ec2:AttachInternetGateway",
+        "ec2:DetachInternetGateway",
+        "ec2:CreateNatGateway",
+        "ec2:DeleteNatGateway",
+        "ec2:CreateRouteTable",
+        "ec2:DeleteRouteTable",
+        "ec2:CreateRoute",
+        "ec2:DeleteRoute",
+        "ec2:AssociateRouteTable",
+        "ec2:DisassociateRouteTable",
+        "ec2:AllocateAddress",
+        "ec2:ReleaseAddress",
+        "ec2:AssociateAddress",
+        "ec2:DisassociateAddress"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "TerraformSecurityGroupManagement",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateSecurityGroup",
+        "ec2:DeleteSecurityGroup",
+        "ec2:AuthorizeSecurityGroupIngress",
+        "ec2:AuthorizeSecurityGroupEgress",
+        "ec2:RevokeSecurityGroupIngress",
+        "ec2:RevokeSecurityGroupEgress",
+        "ec2:UpdateSecurityGroupRuleDescriptionsIngress",
+        "ec2:UpdateSecurityGroupRuleDescriptionsEgress"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "TerraformS3Management",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:DeleteBucket",
+        "s3:PutBucketVersioning",
+        "s3:PutBucketEncryption",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:PutBucketLogging",
+        "s3:PutBucketPolicy",
+        "s3:DeleteBucketPolicy",
+        "s3:PutBucketTagging",
+        "s3:PutBucketAcl",
+        "s3:GetBucket*",
+        "s3:ListBucket"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringNotEquals": {
+          "s3:x-amz-acl": [
+            "public-read",
+            "public-read-write"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "TerraformALBManagement",
+      "Effect": "Allow",
+      "Action": [
+        "elasticloadbalancing:CreateLoadBalancer",
+        "elasticloadbalancing:DeleteLoadBalancer",
+        "elasticloadbalancing:CreateTargetGroup",
+        "elasticloadbalancing:DeleteTargetGroup",
+        "elasticloadbalancing:CreateListener",
+        "elasticloadbalancing:DeleteListener",
+        "elasticloadbalancing:ModifyLoadBalancerAttributes",
+        "elasticloadbalancing:ModifyTargetGroup",
+        "elasticloadbalancing:RegisterTargets",
+        "elasticloadbalancing:DeregisterTargets",
+        "elasticloadbalancing:AddTags",
+        "elasticloadbalancing:RemoveTags",
+        "elasticloadbalancing:Describe*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "TerraformRDSManagement",
+      "Effect": "Allow",
+      "Action": [
+        "rds:CreateDBInstance",
+        "rds:DeleteDBInstance",
+        "rds:ModifyDBInstance",
+        "rds:CreateDBSubnetGroup",
+        "rds:DeleteDBSubnetGroup",
+        "rds:ModifyDBSubnetGroup",
+        "rds:AddTagsToResource",
+        "rds:RemoveTagsFromResource",
+        "rds:Describe*",
+        "rds:List*"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "Bool": {
+          "rds:PubliclyAccessible": "false"
+        }
+      }
+    },
+    {
+      "Sid": "TerraformIAMRoleManagement",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:GetRole",
+        "iam:UpdateRole",
+        "iam:PutRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:CreateInstanceProfile",
+        "iam:DeleteInstanceProfile",
+        "iam:GetInstanceProfile",
+        "iam:AddRoleToInstanceProfile",
+        "iam:RemoveRoleFromInstanceProfile",
+        "iam:TagRole",
+        "iam:UntagRole",
+        "iam:PassRole"
+      ],
+      "Resource": [
+        "arn:aws:iam::*:role/ai-cloud-platform-*",
+        "arn:aws:iam::*:instance-profile/ai-cloud-platform-*"
+      ]
+    },
+    {
+      "Sid": "TerraformKMSManagement",
+      "Effect": "Allow",
+      "Action": [
+        "kms:CreateKey",
+        "kms:CreateAlias",
+        "kms:DeleteAlias",
+        "kms:UpdateKeyDescription",
+        "kms:PutKeyPolicy",
+        "kms:TagResource",
+        "kms:UntagResource",
+        "kms:ScheduleKeyDeletion",
+        "kms:CancelKeyDeletion",
+        "kms:EnableKey",
+        "kms:DisableKey",
+        "kms:Describe*",
+        "kms:Get*",
+        "kms:List*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "TerraformCloudWatchManagement",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:DeleteLogGroup",
+        "logs:PutRetentionPolicy",
+        "logs:TagLogGroup",
+        "logs:UntagLogGroup",
+        "cloudwatch:PutMetricAlarm",
+        "cloudwatch:DeleteAlarms",
+        "cloudwatch:TagResource",
+        "cloudwatch:UntagResource"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "TerraformStateAccess",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::ai-cloud-platform-tfstate-*/*"
+      ]
+    },
+    {
+      "Sid": "TerraformStateBucketList",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket",
+        "s3:GetBucketVersioning"
+      ],
+      "Resource": [
+        "arn:aws:s3:::ai-cloud-platform-tfstate-*"
+      ]
+    },
+    {
+      "Sid": "TerraformStateLocking",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:DeleteItem"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:*:*:table/ai-cloud-platform-tfstate-lock"
+      ]
+    },
+    {
+      "Sid": "DenyDangerousActions",
+      "Effect": "Deny",
+      "Action": [
+        "iam:CreateUser",
+        "iam:DeleteUser",
+        "iam:CreateAccessKey",
+        "iam:DeleteAccessKey",
+        "iam:PutUserPolicy",
+        "iam:AttachUserPolicy",
+        "organizations:*",
+        "account:*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DenyPublicS3Access",
+      "Effect": "Deny",
+      "Action": [
+        "s3:PutBucketAcl",
+        "s3:PutObjectAcl"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "s3:x-amz-acl": [
+            "public-read",
+            "public-read-write"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "DenyPublicRDS",
+      "Effect": "Deny",
+      "Action": [
+        "rds:CreateDBInstance",
+        "rds:ModifyDBInstance"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "Bool": {
+          "rds:PubliclyAccessible": "true"
+        }
+      }
+    }
+  ]
+}

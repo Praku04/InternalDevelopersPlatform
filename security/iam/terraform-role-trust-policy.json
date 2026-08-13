@@ -1,0 +1,18 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::ACCOUNT_ID:oidc-provider/vstoken.dev.azure.com/ORG_ID"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "vstoken.dev.azure.com/ORG_ID:sub": "sc://ORG_NAME/PROJECT_NAME/SERVICE_CONNECTION_NAME",
+          "vstoken.dev.azure.com/ORG_ID:aud": "api://AzureADTokenExchange"
+        }
+      }
+    }
+  ]
+}

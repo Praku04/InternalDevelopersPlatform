@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ModuleMetadata",
+  "description": "Schema for terraform/modules/*/module.json registry entries.",
+  "type": "object",
+  "required": ["module_name", "version", "category", "description", "path", "status", "supported_environments", "capabilities", "security_status"],
+  "properties": {
+    "module_name": { "type": "string" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "category": { "type": "string", "enum": ["networking", "compute", "storage", "database", "security", "other"] },
+    "description": { "type": "string" },
+    "path": { "type": "string" },
+    "status": { "type": "string", "enum": ["approved", "pending_review", "deprecated", "rejected"] },
+    "supported_environments": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["dev", "uat", "prod"] }
+    },
+    "capabilities": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "security_status": { "type": "string", "enum": ["approved", "pending_review", "failed"] },
+    "inputs": { "type": "array", "items": { "type": "string" } },
+    "outputs": { "type": "array", "items": { "type": "string" } }
+  }
+}

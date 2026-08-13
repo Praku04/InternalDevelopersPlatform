@@ -1,0 +1,16 @@
+{
+  "module_name": "security-group",
+  "version": "1.0.0",
+  "category": "networking",
+  "description": "Security group module with a built-in guardrail blocking unrestricted SSH/RDP ingress.",
+  "path": "terraform/modules/security-group",
+  "status": "approved",
+  "supported_environments": ["dev", "uat", "prod"],
+  "capabilities": [
+    "ingress-egress-rules",
+    "policy-guardrail-ssh-rdp"
+  ],
+  "security_status": "approved",
+  "inputs": ["application", "environment", "vpc_id", "name_suffix", "description", "ingress_rules", "egress_rules"],
+  "outputs": ["security_group_id", "security_group_name"]
+}

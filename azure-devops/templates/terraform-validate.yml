@@ -1,0 +1,110 @@
+# Terraform Validation Template
+# Runs terraform fmt check, init, and validate
+
+parameters:
+- name: requestId
+  type: string
+- name: workingDirectory
+  type: string
+- name: terraformVersion
+  type: string
+  default: '1.9.0'
+
+steps:
+- checkout: self
+  displayName: 'Checkout Repository'
+
+- task: TerraformInstaller@0
+  displayName: 'Install Terraform'
+  inputs:
+    terraformVersion: ${{ parameters.terraformVersion }}
+
+- script: |
+    echo "Validating Terraform configuration for request: ${{ parameters.requestId }}"
+    cd ${{ parameters.workingDirectory }}
+    
+    # Check if directory exists
+    if [ ! -d "${{ parameters.workingDirectory }}" ]; then
+      echo "##vso[task.logissue type=error]Workspace directory not found: ${{ parameters.workingDirectory }}"
+      exit 1
+    fi
+    
+    # List files for debugging
+    echo "Files in workspace:"
+    ls -la
+  displayName: 'Verify Workspace'
+
+- script: |
+    cd ${{ parameters.workingDirectory }}
+    
+    echo "Running terraform fmt check..."
+    terraform fmt -check -recursive
+    
+    if [ $? -ne 0 ]; then
+      echo "##vso[task.logissue type=warning]Terraform formatting issues detected"
+      echo "Running terraform fmt to show differences..."
+      terraform fmt -recursive -diff
+    fi
+  displayName: 'Terraform Format Check'
+  continueOnError: true
+
+- script: |
+    cd ${{ parameters.workingDirectory }}
+    
+    echo "Initializing Terraform..."
+    terraform init -backend=false -input=false
+    
+    if [ $? -ne 0 ]; then
+      echo "##vso[task.logissue type=error]Terraform initialization failed"
+      exit 1
+    fi
+  displayName: 'Terraform Init'
+
+- script: |
+    cd ${{ parameters.workingDirectory }}
+    
+    echo "Validating Terraform configuration..."
+    terraform validate -json > validate.json
+    
+    # Display validation results
+    cat validate.json
+    
+    # Check if validation passed
+    if ! jq -e '.valid == true' validate.json > /dev/null; then
+      echo "##vso[task.logissue type=error]Terraform validation failed"
+      jq -r '.diagnostics[] | "[\(.severity | ascii_upcase)] \(.summary): \(.detail)"' validate.json
+      exit 1
+    fi
+    
+    echo "Terraform validation passed successfully"
+  displayName: 'Terraform Validate'
+
+- task: PublishPipelineArtifact@1
+  displayName: 'Publish Validation Results'
+  inputs:
+    targetPath: '${{ parameters.workingDirectory }}/validate.json'
+    artifact: 'validation-results-${{ parameters.requestId }}'
+    publishLocation: 'pipeline'
+  condition: always()
+
+- task: PowerShell@2
+  displayName: 'Update Validation Status'
+  inputs:
+    targetType: 'inline'
+    script: |
+      $requestId = "${{ parameters.requestId }}"
+      $apiUrl = "$(BACKEND_API_URL)/api/v1/deployments/$requestId/status"
+      
+      $body = @{
+        status = "VALIDATED"
+        message = "Terraform validation completed successfully"
+        pipeline_run_id = "$(Build.BuildId)"
+      } | ConvertTo-Json
+      
+      try {
+        Invoke-RestMethod -Uri $apiUrl -Method PUT -Body $body -ContentType "application/json"
+        Write-Host "Validation status updated"
+      } catch {
+        Write-Warning "Failed to update status: $_"
+      }
+  condition: succeeded()
