@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     aws_region: str = "ap-south-1"
 
     # Bedrock is configurable so the model can be swapped without code changes.
+    # Only required if using AI-powered features (optional in production)
     bedrock_model_id: str = "anthropic.claude-sonnet-4-6"
 
     dynamodb_table_prefix: str = "ai-cloud-self-service"
@@ -26,6 +27,10 @@ class Settings(BaseSettings):
 
     s3_bucket: str | None = None
     s3_tfstate_bucket: str | None = None
+    
+    # NOTE: Terraform 1.6.0+ uses native state locking
+    # DynamoDB lock table is NOT required and deprecated
+    # dynamodb_lock_table is kept for backward compatibility but not used
     dynamodb_lock_table: str | None = None
 
     # Azure DevOps configuration

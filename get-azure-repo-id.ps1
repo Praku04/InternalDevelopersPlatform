@@ -79,11 +79,22 @@ ENVIRONMENT=production
 LOG_LEVEL=INFO
 DEMO_MODE=false
 
-# AWS Configuration
+# AWS Configuration (Optional - only for Bedrock AI features)
+# AWS credentials are NOT required in production
+# Only needed if you want to use AI-powered module discovery
 AWS_REGION=ap-south-1
 BEDROCK_MODEL_ID=anthropic.claude-sonnet-4-20250514
+
+# Database Configuration
 DYNAMODB_ENDPOINT_URL=http://dynamodb-local:8000
 DYNAMODB_TABLE_PREFIX=internal-dev-portal
+
+# Terraform Configuration
+TERRAFORM_MODULES_PATH=/terraform-modules
+
+# Terraform 1.6.0+ uses native state locking
+# No DynamoDB lock table needed
+S3_TFSTATE_BUCKET=internal-dev-portal-tfstate
 
 # Azure DevOps Configuration
 AZDO_ORGANIZATION=prakashranjan0943
@@ -98,15 +109,9 @@ GIT_BRANCH=main
 
 # Backend Configuration
 BACKEND_API_URL=http://corridors:8100
-TERRAFORM_MODULES_PATH=/terraform-modules
 
 # Frontend Configuration
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8100
-
-# S3 Configuration (optional)
-S3_BUCKET=internal-dev-portal-artifacts
-S3_TFSTATE_BUCKET=internal-dev-portal-tfstate
-DYNAMODB_LOCK_TABLE=internal-dev-portal-tfstate-lock
 "@
             
             Set-Content -Path ".env" -Value $envContent
